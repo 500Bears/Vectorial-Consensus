@@ -542,11 +542,10 @@
             state.vConsensusProgress = 0;
             setTimeout(() => resultDisplay.style.opacity = 0, 500);
         } finally {
-            state.isProcessing = false;
+            // In demo mode, isProcessing is handled by the utterance.onend callback.
             if (!demoModeActive) {
-                if (!demoModeActive) {
+                state.isProcessing = false;
                 conceptualizeBtn.disabled = false;
-            }
             }
         }
     }
