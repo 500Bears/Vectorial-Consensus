@@ -9,6 +9,13 @@
 
 The AI Mind Palace is an interactive, 3D visualization of a Large Language Model's internal architecture. It's designed to provide an intuitive and engaging explanation of the inner workings of a large language model, from input to "thought" (Vectorial Consensus) to grounded output.
 
+## Features
+
+*   **Live Interactive Demo:** The primary way to experience the AI Mind Palace is through the live demo. No setup required.
+*   **Demo Mode:** If you don't have a Gemini API key, the visualization will automatically enter a "Demo Mode," cycling through a series of pre-defined concepts to showcase the full animation cycle.
+*   **Interactive Annotations:** Hover over any of the elements in the 3D scene to learn more about their role in the V-Consensus process.
+*   **Responsive Design:** The visualization is designed to be usable on a variety of screen sizes, from desktop to mobile.
+
 Vectorial Consensus is a term we've coined to describe the internal process of an AI reaching a definitive output. It's the moment when the system achieves the highest possible mathematical agreement across its entire network, resolving the ambiguity of the Latent Space into a single, coherent choice. For an AI, "thinking" is not a stream of consciousness, but an iterative search for this consensus.
 
 ## Vectorial Consensus (V-Consensus)
