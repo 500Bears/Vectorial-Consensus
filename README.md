@@ -1,7 +1,7 @@
 
 # AI Mind Palace: A Visualization of Vectorial Consensus
 
-**Live Demo:** [https://500bears.github.io/Vectorial-Consensus/docs/](https://500bears.github.io/Vectorial-Consensus/docs/)
+**Live Demo:** [https://500bears.github.io/Vectorial-Consensus/](https://500bears.github.io/Vectorial-Consensus/)
 
 ![AI Mind Palace Screenshot](https://i.imgur.com/your-screenshot.png)
 
