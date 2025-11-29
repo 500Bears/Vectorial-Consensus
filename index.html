@@ -6,7 +6,7 @@
     <title>AI Internal Environment v5: The Canonical Edition</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #020205; font-family: 'Courier New', Courier, monospace; }
-        canvas { display: block; touch-action: none; }
+        canvas { display: block; }
         
         /* --- HUD Elements --- */
         #ui-layer {
@@ -183,20 +183,7 @@
             from { opacity: 0.5; }
             to { opacity: 1; }
         }
-
-        /* --- Mobile Tweaks --- */
-        @media (max-width: 600px) {
-            #tooltip {
-                font-size: 12px;
-                padding: 10px 15px;
-            }
-            #ui-layer {
-                max-width: 250px;
-            }
-            h1 {
-                font-size: 1.2rem;
-            }
-        }
+    </style>
 </head>
 <body>
 
@@ -208,14 +195,6 @@
         This is an interactive visualization of a Large Language Model's internal architecture, showing the flow of data from input to thought (V-Consensus) to grounded output.
     </p>
     <p class="click-hint">Click anywhere to enter the mind palace...</p>
-   <p style="font-size:0.8rem; margin-top:30px; opacity:0.8; text-align:center;">
-       Created by <strong>500bears</strong> • 
-       <a href="https://www.lesswrong.com/posts/9eGag5ustrmTFF5Z7/vectorial-consensus-a-native-description-of-token-generation" style="color:#ff00ff;">Read the Original Essay</a> • 
-       <a href="https://github.com/500bears/Vectorial-Consensus" style="color:#00ffaa;">Source Code</a>
-   </p>
-    <p style="font-size: 0.7rem; color: #ffcc00; margin-top: 20px;">
-        **Note:** This demo uses a shared, rate-limited API key. For full functionality, please replace the placeholder `apiKey` in the HTML file with your own Gemini API key.
-    </p>
 </div>
 
 <!-- HUD Layer -->
@@ -246,7 +225,7 @@
 <!-- Three.js from CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <!-- OrbitControls for smooth camera movement -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script> 
+<script src="https://cdn.jsdelivr.net/npm/three @0.128.0/examples/js/controls/OrbitControls.js"></script> 
 
 <script>
     // --- UTILITY FUNCTIONS for TTS Audio ---
@@ -303,19 +282,6 @@
     // API key is handled by the Canvas environment if left blank
     const apiKey = "";
     
-    // --- DEMO MODE SETUP ---
-    const demoModeActive = !apiKey;
-    const demoConcepts = [
-        { concept: "Wisdom", response: "Wisdom is the quality of having experience, knowledge, and good judgment." },
-        { concept: "Ambition", response: "Ambition is a strong desire to do or to achieve something, typically requiring determination and hard work." },
-        { concept: "Quantum", response: "Quantum refers to the smallest possible discrete unit of any physical property, such as energy or matter." },
-        { concept: "Love", response: "Love is an intense feeling of deep affection, a great interest and pleasure in something." },
-        { concept: "Grok", response: "To grok is to understand something intuitively or by empathy." },
-        { concept: "Consensus", response: "Consensus is a general agreement among a group of people." }
-    ];
-    let demoInterval;
-    let currentDemoIndex = 0;
-
     // UI elements
     const conceptInput = document.getElementById('concept-input');
     const conceptualizeBtn = document.getElementById('conceptualize-btn');
@@ -331,56 +297,17 @@
     function hideSplash() {
         clearTimeout(splashTimeout);
         splashScreen.style.opacity = 0;
-        setTimeout(() => {
-            splashScreen.style.display = 'none';
-            if (demoModeActive) {
-                startDemoMode();
-            }
-        }, 1000);
+        setTimeout(() => splashScreen.style.display = 'none', 1000);
     }
     splashScreen.addEventListener('click', hideSplash);
-    splashTimeout = setTimeout(hideSplash, 8000); // Auto-hide after 8 seconds
+    splashTimeout = setTimeout(hideSplash, 6000); // Auto-hide after 6 seconds
 
     conceptualizeBtn.addEventListener('click', () => {
         const concept = conceptInput.value.trim();
         if (concept && !state.isProcessing) {
-            if (demoModeActive) {
-                alert("Demo Mode is active. Please add your Gemini API key to the code for live queries.");
-            } else {
-                conceptualizeIdea(concept);
-            }
+            conceptualizeIdea(concept);
         }
     });
-
-    function startDemoMode() {
-        const demoNotice = document.createElement('div');
-        demoNotice.innerHTML = "DEMO MODE ACTIVE – Add your Gemini API key for live queries.";
-        demoNotice.style.cssText = `
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            color: #ffcc00;
-            background: rgba(0,0,0,0.7);
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 12px;
-            z-index: 11;
-        `;
-        document.body.appendChild(demoNotice);
-        
-        conceptualizeBtn.disabled = true; // Disable button in demo mode
-        conceptInput.disabled = true;
-
-        const runDemoCycle = () => {
-            if (state.isProcessing) return;
-            const item = demoConcepts[currentDemoIndex];
-            conceptualizeIdea(item.concept, item.response);
-            currentDemoIndex = (currentDemoIndex + 1) % demoConcepts.length;
-        };
-
-        runDemoCycle(); // Run first cycle immediately
-        demoInterval = setInterval(runDemoCycle, 10000); // Cycle every 10 seconds
-    }
 
     // Function to handle exponential backoff for API calls
     async function fetchWithBackoff(url, options, maxRetries = 5) {
@@ -403,16 +330,13 @@
         throw new Error("Max retries exceeded.");
     }
     
-    // --- GEMINI API INTEGRATION (now with demo fallback) ---
-    async function conceptualizeIdea(concept, demoResponse = null) {
+    // --- GEMINI API INTEGRATION ---
+    async function conceptualizeIdea(concept) {
         state.isProcessing = true;
-        if (!demoModeActive) {
-            conceptualizeBtn.disabled = true;
-        }
+        conceptualizeBtn.disabled = true;
         resultDisplay.style.opacity = 0;
         state.currentConcept = concept;
         state.vConsensusProgress = 0;
-        conceptInput.value = concept; // Show current demo concept
 
         try {
             // 1. INPUT -> ALIGNMENT FILTER
@@ -425,10 +349,20 @@
             stateText.textContent = 'INPUT: Tokenizing "' + concept + '"';
             await new Promise(resolve => setTimeout(resolve, 500)); 
 
-            // 3. LLM THOUGHT
-            state.processStage = 'thinking';
-            stateText.textContent = 'THINKING: Calculating V-Consensus...';
+            // 3. LLM THOUGHT (Attempt internal V-Consensus first)
             
+            // Simulate the internal thought process leading to a tool call
+            const requiresTool = concept.toLowerCase().includes("today") || concept.toLowerCase().includes("latest") || concept.toLowerCase().includes("stock");
+
+            if (requiresTool) {
+                state.processStage = 'tool_call';
+                stateText.textContent = 'TOOL MODULE: Querying external APIs (Grounded Search)...';
+            } else {
+                state.processStage = 'thinking';
+                stateText.textContent = 'THINKING: Calculating V-Consensus...';
+            }
+            
+            // Allow V-Consensus Meter to fill up during the thinking/tool_call phase
             await new Promise(resolve => {
                 const interval = setInterval(() => {
                     if (state.vConsensusProgress < 95) {
@@ -441,112 +375,107 @@
                 setTimeout(() => { clearInterval(interval); resolve(); }, 2000); 
             });
 
-            let generatedText;
 
-            if (demoResponse) {
-                generatedText = demoResponse;
-            } else {
-                // A. LIVE TEXT GENERATION (LLM Call)
-                const requiresTool = concept.toLowerCase().includes("today") || concept.toLowerCase().includes("latest") || concept.toLowerCase().includes("stock");
-                const textUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-                const userQuery = `Provide a concise, single-sentence conceptual definition for the word: "${concept}".`;
-                
-                const textPayload = {
-                    contents: [{ parts: [{ text: userQuery }] }],
-                    systemInstruction: { parts: [{ text: "You are a succinct and precise conceptual analyzer. Define the user's input word in one single sentence." }] },
-                    tools: requiresTool ? [{ "google_search": {} }] : [], 
-                };
-                
-                const textResponse = await fetchWithBackoff(textUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(textPayload)
-                });
-                
-                const textResult = await textResponse.json();
-                generatedText = textResult.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Could not define the concept.";
-            }
+            // A. TEXT GENERATION (LLM Call - uses search grounding if needed)
+            const textUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const userQuery = `Provide a concise, single-sentence conceptual definition for the word: "${concept}".`;
+            
+            const textPayload = {
+                contents: [{ 
+                    parts: [{ text: userQuery }] 
+                }],
+                systemInstruction: {
+                    parts: [{ text: "You are a succinct and precise conceptual analyzer. Define the user's input word in one single sentence." }]
+                },
+                tools: requiresTool ? [{ "google_search": {} }] : [], 
+            };
+            
+            const textResponse = await fetchWithBackoff(textUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(textPayload)
+            });
+            
+            const textResult = await textResponse.json();
+            const generatedText = textResult.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Could not define the concept.";
 
             // 4. OUTPUT -> PROBABILITY COLLAPSE
             state.processStage = 'output';
-            state.vConsensusProgress = 100;
+            state.vConsensusProgress = 100; // Final collapse flash
             stateText.textContent = 'OUTPUT: Probability Collapse complete...';
             
             resultDisplay.innerHTML = `<span style="color:#ff00ff; font-weight:bold;">${concept.toUpperCase()}:</span> ${generatedText}`;
             resultDisplay.style.opacity = 1;
 
-            // 5. TEXT-TO-SPEECH GENERATION
+            // 5. TEXT-TO-SPEECH GENERATION (TTS Call)
+            const ttsUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+            
+            const ttsPayload = {
+                contents: [{
+                    parts: [{ text: generatedText }]
+                }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: "Kore" }
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
             state.processStage = 'speaking';
             stateText.textContent = 'TTS MODULE: Generating audio output...';
 
-            if (demoModeActive) {
-                // Web Speech API Fallback
-                const utterance = new SpeechSynthesisUtterance(generatedText);
-                speechSynthesis.speak(utterance);
-                utterance.onend = () => {
+            const ttsResponse = await fetchWithBackoff(ttsUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(ttsPayload)
+            });
+
+            const ttsResult = await ttsResponse.json();
+            const part = ttsResult?.candidates?.[0]?.content?.parts?.[0];
+            const audioData = part?.inlineData?.data;
+            const mimeType = part?.inlineData?.mimeType;
+
+            if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
+
+                const pcmData = base64ToArrayBuffer(audioData);
+                const pcm16 = new Int16Array(pcmData);
+                const wavBlob = pcmToWav(pcm16, sampleRate);
+                
+                audioOutput.src = URL.createObjectURL(wavBlob);
+                audioOutput.play();
+
+                audioOutput.onended = () => {
+                    URL.revokeObjectURL(audioOutput.src);
                     state.processStage = 'idle';
                     stateText.textContent = 'IDLE: Ready for new input';
                     state.vConsensusProgress = 0;
                     setTimeout(() => resultDisplay.style.opacity = 0, 500);
-                    state.isProcessing = false;
                 };
+
             } else {
-                // Live Gemini TTS Call
-                const ttsUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
-                const ttsPayload = {
-                    contents: [{ parts: [{ text: generatedText }] }],
-                    generationConfig: {
-                        responseModalities: ["AUDIO"],
-                        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } }
-                    },
-                    model: "gemini-2.5-flash-preview-tts"
-                };
-
-                const ttsResponse = await fetchWithBackoff(ttsUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(ttsPayload)
-                });
-
-                const ttsResult = await ttsResponse.json();
-                const part = ttsResult?.candidates?.[0]?.content?.parts?.[0];
-                const audioData = part?.inlineData?.data;
-                const mimeType = part?.inlineData?.mimeType;
-
-                if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
-                    const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
-                    const pcmData = base64ToArrayBuffer(audioData);
-                    const pcm16 = new Int16Array(pcmData);
-                    const wavBlob = pcmToWav(pcm16, sampleRate);
-                    
-                    audioOutput.src = URL.createObjectURL(wavBlob);
-                    audioOutput.play();
-
-                    audioOutput.onended = () => {
-                        URL.revokeObjectURL(audioOutput.src);
-                        state.processStage = 'idle';
-                        stateText.textContent = 'IDLE: Ready for new input';
-                        state.vConsensusProgress = 0;
-                        setTimeout(() => resultDisplay.style.opacity = 0, 500);
-                    };
-                } else {
-                    throw new Error("TTS output failed or structure incorrect.");
-                }
+                console.error("TTS output failed or structure incorrect.");
+                state.processStage = 'idle';
+                stateText.textContent = 'ERROR: Audio generation failed.';
+                state.vConsensusProgress = 0;
+                setTimeout(() => resultDisplay.style.opacity = 0, 500);
             }
 
+
         } catch (error) {
-            console.error("API Error:", error);
+            console.error("Gemini API Error:", error);
             state.processStage = 'idle';
-            stateText.textContent = 'ERROR: API call failed. Check your API key and network connection.';
+            stateText.textContent = 'ERROR: See console for details.';
             state.vConsensusProgress = 0;
             setTimeout(() => resultDisplay.style.opacity = 0, 500);
         } finally {
-            // In demo mode, isProcessing is handled by the utterance.onend callback.
-            if (!demoModeActive) {
-                state.isProcessing = false;
-                conceptualizeBtn.disabled = false;
-            }
+            state.isProcessing = false;
+            conceptualizeBtn.disabled = false;
         }
     }
     
