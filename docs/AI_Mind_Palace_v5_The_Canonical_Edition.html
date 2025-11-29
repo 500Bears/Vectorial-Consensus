@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Internal Environment v5: The Canonical Edition</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #020205; font-family: 'Courier New', Courier, monospace; }
+        canvas { display: block; }
+        
+        /* --- HUD Elements --- */
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ffff;
+            pointer-events: none;
+            max-width: 350px;
+            z-index: 10;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin: 0 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px #00ffff;
+            border-bottom: 1px solid #00ffff;
+            padding-bottom: 5px;
+        }
+        .status-item {
+            font-size: 0.8rem;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+        .highlight { color: #fff; font-weight: bold; }
+        
+        /* --- V-Consensus Meter --- */
+        #v-meter-container {
+            width: 10px;
+            height: 100px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00ffff;
+            margin-top: 15px;
+            position: relative;
+        }
+        #v-meter-fill {
+            width: 100%;
+            height: 0%; /* Starts at 0 */
+            background: linear-gradient(to top, #ff00ff, #00ffff);
+            position: absolute;
+            bottom: 0;
+            transition: height 0.1s ease-out;
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+        }
+        #v-meter-label {
+            position: absolute;
+            top: -20px;
+            left: -35px;
+            font-size: 0.7rem;
+            color: #00ffff;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        /* --- Tooltip & Control Panel (Same as V4) --- */
+        #tooltip {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ffaa;
+            background: rgba(0, 20, 10, 0.9);
+            padding: 15px 25px;
+            border: 1px solid #00ffaa;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            box-shadow: 0 0 15px rgba(0, 255, 170, 0.2);
+            text-align: center;
+            max-width: 400px;
+            z-index: 10;
+        }
+        #tooltip strong { display: block; margin-bottom: 5px; color: white; text-transform: uppercase; }
+        
+        #control-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            box-shadow: 0 -5px 15px rgba(0, 255, 255, 0.2);
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            height: 60px;
+            z-index: 10;
+        }
+        #control-panel input {
+            padding: 10px;
+            border: 1px solid #00ffff;
+            background: #001122;
+            color: #fff;
+            border-radius: 5px;
+            width: clamp(200px, 50vw, 400px);
+            font-size: 14px;
+        }
+        #control-panel button {
+            background: #ff00aa;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s, transform 0.1s;
+        }
+        #control-panel button:hover { background: #ff33cc; transform: scale(1.05); }
+        #control-panel button:disabled { background: #333; cursor: not-allowed; }
+        
+        /* --- Workbench Definition Display --- */
+        #result-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 50, 80, 0.9);
+            border: 2px solid #00ffff;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            width: clamp(200px, 70vw, 500px);
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            z-index: 9;
+            font-size: 0.9rem;
+        }
+        
+        /* --- Splash Screen --- */
+        #splash-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 1);
+            color: #00ffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            opacity: 1;
+            transition: opacity 1s ease-in-out;
+            z-index: 100;
+            cursor: pointer;
+            padding: 20px;
+        }
+        #splash-screen h2 {
+            font-size: clamp(1.5rem, 5vw, 3rem);
+            text-shadow: 0 0 20px #00ffff;
+            margin-bottom: 20px;
+            letter-spacing: 5px;
+        }
+        #splash-screen p {
+            font-size: clamp(0.9rem, 2vw, 1.2rem);
+            max-width: 600px;
+            line-height: 1.5;
+            color: #aaa;
+            margin-top: 20px;
+        }
+        #splash-screen .click-hint {
+            margin-top: 40px;
+            font-size: 0.8rem;
+            color: #ff00ff;
+            animation: pulse 1s infinite alternate;
+        }
+        @keyframes pulse {
+            from { opacity: 0.5; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Splash Screen -->
+<div id="splash-screen">
+    <h2>VECTORIAL CONSENSUS</h2>
+    <p>
+        **CORTEX-04: THE EXTENDED COGNITION ENGINE**<br>
+        This is an interactive visualization of a Large Language Model's internal architecture, showing the flow of data from input to thought (V-Consensus) to grounded output.
+    </p>
+    <p class="click-hint">Click anywhere to enter the mind palace...</p>
+</div>
+
+<!-- HUD Layer -->
+<div id="ui-layer">
+    <h1>System: CORTEX-04</h1>
+    <div class="status-item">STATE: <span id="state-text" class="highlight">AWAITING INPUT</span></div>
+    <div class="status-item">V-CONSENSUS: <span id="v-consensus-text" class="highlight">0%</span></div>
+    <div class="status-item">ATTENTION: <span class="highlight">MULTI-HEAD (4)</span></div>
+    <div id="v-meter-label">V-METER</div>
+    <div id="v-meter-container"><div id="v-meter-fill"></div></div>
+    
+    <p style="font-size: 12px; opacity: 0.7; margin-top: 15px;">
+        > Drag/scroll to move the camera.<br>
+        > Hover elements for lore context.
+    </p>
+</div>
+
+<div id="tooltip"></div>
+<div id="result-display"></div>
+
+<div id="control-panel">
+    <input type="text" id="concept-input" placeholder="Enter a concept (e.g., 'Exascale')" value="Ambition">
+    <button id="conceptualize-btn">✨ Conceptualize & Speak (Full Cycle)</button>
+</div>
+
+<audio id="audio-output" style="display: none;"></audio>
+
+<!-- Three.js from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- OrbitControls for smooth camera movement -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script> 
+
+<script>
+    // --- UTILITY FUNCTIONS for TTS Audio ---
+    function base64ToArrayBuffer(base64) {
+        const binaryString = atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
+    function pcmToWav(pcm16, sampleRate = 16000) {
+        const numChannels = 1;
+        const bytesPerSample = 2;
+        const numSamples = pcm16.length;
+        const buffer = new ArrayBuffer(44 + numSamples * bytesPerSample);
+        const view = new DataView(buffer);
+        let offset = 0;
+
+        function writeString(str) {
+            for (let i = 0; i < str.length; i++) {
+                view.setUint8(offset++, str.charCodeAt(i));
+            }
+        }
+        writeString('RIFF');
+        view.setUint32(offset, 36 + numSamples * bytesPerSample, true); offset += 4;
+        writeString('WAVE');
+        writeString('fmt ');
+        view.setUint32(offset, 16, true); offset += 4;
+        view.setUint16(offset, 1, true); offset += 2;
+        view.setUint16(offset, numChannels, true); offset += 2;
+        view.setUint32(offset, sampleRate, true); offset += 4;
+        view.setUint32(offset, sampleRate * numChannels * bytesPerSample, true); offset += 4;
+        view.setUint16(offset, numChannels * bytesPerSample, true); offset += 2;
+        view.setUint16(offset, bytesPerSample * 8, true); offset += 2;
+        writeString('data');
+        view.setUint32(offset, numSamples * bytesPerSample, true); offset += 4;
+        for (let i = 0; i < numSamples; i++) {
+            view.setInt16(offset, pcm16[i], true); offset += 2;
+        }
+        return new Blob([view], { type: 'audio/wav' });
+    }
+
+    // --- STATE MANAGEMENT ---
+    const state = {
+        isProcessing: false,
+        processStage: 'idle',
+        vConsensusProgress: 0,
+        currentConcept: ''
+    };
+    
+    // API key is handled by the Canvas environment if left blank
+    const apiKey = "";
+    
+    // UI elements
+    const conceptInput = document.getElementById('concept-input');
+    const conceptualizeBtn = document.getElementById('conceptualize-btn');
+    const stateText = document.getElementById('state-text');
+    const vConsensusText = document.getElementById('v-consensus-text');
+    const vMeterFill = document.getElementById('v-meter-fill');
+    const resultDisplay = document.getElementById('result-display');
+    const audioOutput = document.getElementById('audio-output');
+    const splashScreen = document.getElementById('splash-screen');
+
+    // --- SPLASH SCREEN LOGIC ---
+    let splashTimeout;
+    function hideSplash() {
+        clearTimeout(splashTimeout);
+        splashScreen.style.opacity = 0;
+        setTimeout(() => splashScreen.style.display = 'none', 1000);
+    }
+    splashScreen.addEventListener('click', hideSplash);
+    splashTimeout = setTimeout(hideSplash, 6000); // Auto-hide after 6 seconds
+
+    conceptualizeBtn.addEventListener('click', () => {
+        const concept = conceptInput.value.trim();
+        if (concept && !state.isProcessing) {
+            conceptualizeIdea(concept);
+        }
+    });
+
+    // Function to handle exponential backoff for API calls
+    async function fetchWithBackoff(url, options, maxRetries = 5) {
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const response = await fetch(url, options);
+                if (response.ok) {
+                    return response;
+                }
+                if (response.status === 429 && attempt < maxRetries - 1) {
+                    const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                } else {
+                    throw new Error(`API call failed with status: ${response.status}`);
+                }
+            } catch (error) {
+                if (attempt === maxRetries - 1) throw error;
+            }
+        }
+        throw new Error("Max retries exceeded.");
+    }
+    
+    // --- GEMINI API INTEGRATION ---
+    async function conceptualizeIdea(concept) {
+        state.isProcessing = true;
+        conceptualizeBtn.disabled = true;
+        resultDisplay.style.opacity = 0;
+        state.currentConcept = concept;
+        state.vConsensusProgress = 0;
+
+        try {
+            // 1. INPUT -> ALIGNMENT FILTER
+            state.processStage = 'filtering';
+            stateText.textContent = 'FILTER: Checking policy alignment...';
+            await new Promise(resolve => setTimeout(resolve, 800)); 
+            
+            // 2. FILTER -> TOKENIZER
+            state.processStage = 'input';
+            stateText.textContent = 'INPUT: Tokenizing "' + concept + '"';
+            await new Promise(resolve => setTimeout(resolve, 500)); 
+
+            // 3. LLM THOUGHT (Attempt internal V-Consensus first)
+            
+            // Simulate the internal thought process leading to a tool call
+            const requiresTool = concept.toLowerCase().includes("today") || concept.toLowerCase().includes("latest") || concept.toLowerCase().includes("stock");
+
+            if (requiresTool) {
+                state.processStage = 'tool_call';
+                stateText.textContent = 'TOOL MODULE: Querying external APIs (Grounded Search)...';
+            } else {
+                state.processStage = 'thinking';
+                stateText.textContent = 'THINKING: Calculating V-Consensus...';
+            }
+            
+            // Allow V-Consensus Meter to fill up during the thinking/tool_call phase
+            await new Promise(resolve => {
+                const interval = setInterval(() => {
+                    if (state.vConsensusProgress < 95) {
+                        state.vConsensusProgress += 5 + Math.random() * 5;
+                        if (state.vConsensusProgress > 95) state.vConsensusProgress = 95;
+                    } else {
+                        clearInterval(interval);
+                    }
+                }, 100);
+                setTimeout(() => { clearInterval(interval); resolve(); }, 2000); 
+            });
+
+
+            // A. TEXT GENERATION (LLM Call - uses search grounding if needed)
+            const textUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const userQuery = `Provide a concise, single-sentence conceptual definition for the word: "${concept}".`;
+            
+            const textPayload = {
+                contents: [{ 
+                    parts: [{ text: userQuery }] 
+                }],
+                systemInstruction: {
+                    parts: [{ text: "You are a succinct and precise conceptual analyzer. Define the user's input word in one single sentence." }]
+                },
+                tools: requiresTool ? [{ "google_search": {} }] : [], 
+            };
+            
+            const textResponse = await fetchWithBackoff(textUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(textPayload)
+            });
+            
+            const textResult = await textResponse.json();
+            const generatedText = textResult.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Could not define the concept.";
+
+            // 4. OUTPUT -> PROBABILITY COLLAPSE
+            state.processStage = 'output';
+            state.vConsensusProgress = 100; // Final collapse flash
+            stateText.textContent = 'OUTPUT: Probability Collapse complete...';
+            
+            resultDisplay.innerHTML = `<span style="color:#ff00ff; font-weight:bold;">${concept.toUpperCase()}:</span> ${generatedText}`;
+            resultDisplay.style.opacity = 1;
+
+            // 5. TEXT-TO-SPEECH GENERATION (TTS Call)
+            const ttsUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+            
+            const ttsPayload = {
+                contents: [{
+                    parts: [{ text: generatedText }]
+                }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: "Kore" }
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            state.processStage = 'speaking';
+            stateText.textContent = 'TTS MODULE: Generating audio output...';
+
+            const ttsResponse = await fetchWithBackoff(ttsUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(ttsPayload)
+            });
+
+            const ttsResult = await ttsResponse.json();
+            const part = ttsResult?.candidates?.[0]?.content?.parts?.[0];
+            const audioData = part?.inlineData?.data;
+            const mimeType = part?.inlineData?.mimeType;
+
+            if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
+
+                const pcmData = base64ToArrayBuffer(audioData);
+                const pcm16 = new Int16Array(pcmData);
+                const wavBlob = pcmToWav(pcm16, sampleRate);
+                
+                audioOutput.src = URL.createObjectURL(wavBlob);
+                audioOutput.play();
+
+                audioOutput.onended = () => {
+                    URL.revokeObjectURL(audioOutput.src);
+                    state.processStage = 'idle';
+                    stateText.textContent = 'IDLE: Ready for new input';
+                    state.vConsensusProgress = 0;
+                    setTimeout(() => resultDisplay.style.opacity = 0, 500);
+                };
+
+            } else {
+                console.error("TTS output failed or structure incorrect.");
+                state.processStage = 'idle';
+                stateText.textContent = 'ERROR: Audio generation failed.';
+                state.vConsensusProgress = 0;
+                setTimeout(() => resultDisplay.style.opacity = 0, 500);
+            }
+
+
+        } catch (error) {
+            console.error("Gemini API Error:", error);
+            state.processStage = 'idle';
+            stateText.textContent = 'ERROR: See console for details.';
+            state.vConsensusProgress = 0;
+            setTimeout(() => resultDisplay.style.opacity = 0, 500);
+        } finally {
+            state.isProcessing = false;
+            conceptualizeBtn.disabled = false;
+        }
+    }
+    
+    // --- SCENE SETUP ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x020205); 
+    scene.fog = new THREE.FogExp2(0x020205, 0.015);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 15, 35);
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.body.appendChild(renderer.domElement);
+
+    // Initialize OrbitControls
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 5, 0); // Focus on the avatar
+    controls.enableDamping = true; // smooth camera movement
+    controls.dampingFactor = 0.05;
+    controls.rotateSpeed = 0.5;
+    controls.update();
+
+
+    // --- MATERIALS ---
+    const glowingCoreMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffffff, emissive: 0x00ffff, emissiveIntensity: 2, roughness: 0, metalness: 0 
+    });
+    const memoryMat = new THREE.MeshPhysicalMaterial({ 
+        color: 0x00ff88, emissive: 0x004422, emissiveIntensity: 0.5, metalness: 0.9, roughness: 0.1,
+        transparent: true, opacity: 0.8
+    });
+    
+    // Colored Attention Head Materials (Suggestion 2)
+    const headColors = [0x00ffff, 0xff00ff, 0xffff00, 0xff4400]; // Syntax, Semantics, Context, Factual
+    const headNames = ["Syntax Head (Head 1)", "Semantics Head (Head 2)", "Context Head (Head 3)", "Factual Head (Head 4)"];
+    
+    const tokenMat = new THREE.MeshBasicMaterial({color: 0xffffff});
+    const filterMat = new THREE.MeshBasicMaterial({color: 0xff4400, transparent: true, opacity: 0.3, side: THREE.DoubleSide});
+    const toolMat = new THREE.MeshPhysicalMaterial({ 
+        color: 0x33aaee, emissive: 0x113355, emissiveIntensity: 1, metalness: 0.9, roughness: 0.1, wireframe: true
+    });
+    const lscMatLocal = new THREE.MeshBasicMaterial({color: 0x00ffaa, transparent: true, opacity: 0.8});
+
+    // --- LIGHTING ---
+    const ambientLight = new THREE.AmbientLight(0x111122, 3);
+    scene.add(ambientLight);
+    
+    const centerLight = new THREE.PointLight(0x00aaff, 2, 60);
+    centerLight.position.set(0, 5, 0);
+    scene.add(centerLight);
+
+    // --- ENVIRONMENT ---
+    const starsGeometry = new THREE.BufferGeometry();
+    const starsCount = 2000;
+    const posArray = new Float32Array(starsCount * 3);
+    for(let i = 0; i < starsCount * 3; i++) {
+        posArray[i] = (Math.random() - 0.5) * 150; 
+    }
+    starsGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+    const starsMaterial = new THREE.PointsMaterial({ size: 0.2, color: 0x4488ff, transparent: true, opacity: 0.6 });
+    const starField = new THREE.Points(starsGeometry, starsMaterial);
+    scene.add(starField);
+
+    const gridHelper = new THREE.GridHelper(120, 60, 0x0044aa, 0x050510);
+    gridHelper.position.y = -2;
+    scene.add(gridHelper);
+
+    // --- MAIN ACTORS ---
+    const worldGroup = new THREE.Group();
+    scene.add(worldGroup);
+
+    // A. THE AVATAR (Active Agent) - Center piece
+    const avatarGroup = new THREE.Group();
+    const brainGeo = new THREE.IcosahedronGeometry(1.2, 2);
+    const brain = new THREE.Mesh(brainGeo, glowingCoreMat);
+    const ring1 = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.05, 16, 100), new THREE.MeshBasicMaterial({color: 0x00ffff}));
+    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.05, 16, 100), new THREE.MeshBasicMaterial({color: 0xff00aa}));
+    avatarGroup.add(brain, ring1, ring2);
+    avatarGroup.position.set(0, 5, 0);
+    worldGroup.add(avatarGroup);
+    avatarGroup.userData = { 
+        name: "The Transformer Agent (V-Consensus Core)", 
+        desc: `The core processor. Coordinates ${headColors.length} Attention Heads to seek Vectorial Consensus (V-Consensus). Heads: ${headNames.join(', ')}.` 
+    };
+
+    // B. MEMORY BANKS (Context Storage)
+    const memoryGroup = new THREE.Group();
+    const memoryBlocks = [];
+    for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2; 
+        const radius = 15;
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        const blockGeo = new THREE.BoxGeometry(1.5, 4, 1.5);
+        const block = new THREE.Mesh(blockGeo, memoryMat);
+        block.position.set(x, 2, z);
+        block.lookAt(0, 2, 0);
+        memoryGroup.add(block);
+        memoryBlocks.push(block); 
+    }
+    worldGroup.add(memoryGroup);
+    memoryGroup.userData = { name: "Context & Memory Bank", desc: "Fixed, pre-trained knowledge and conversation history." };
+
+    // C1. ALIGNMENT FILTER
+    const filterGeo = new THREE.PlaneGeometry(8, 8);
+    const safetyFilter = new THREE.Mesh(filterGeo, filterMat);
+    safetyFilter.rotation.y = Math.PI / 2;
+    safetyFilter.position.set(-20, 5, 0);
+    worldGroup.add(safetyFilter);
+    safetyFilter.userData = { name: "Alignment Filter", desc: "Sanitizes input and checks output for policy compliance and safety." };
+
+    // C2. INPUT STREAM (Tokenizer)
+    const inputGroup = new THREE.Group();
+    const gateGeo = new THREE.TorusGeometry(3, 0.2, 16, 6);
+    const gate = new THREE.Mesh(gateGeo, new THREE.MeshStandardMaterial({color: 0xff3366, emissive: 0xff0044}));
+    gate.position.set(-25, 5, 0);
+    gate.rotation.y = Math.PI / 2;
+    inputGroup.add(gate);
+    
+    const tokenGeo = new THREE.OctahedronGeometry(0.3);
+    const tokens = [];
+    for(let i=0; i<15; i++) {
+        const t = new THREE.Mesh(tokenGeo, tokenMat);
+        t.position.set(-35 - (Math.random() * 10), 5 + (Math.random() - 0.5) * 2, 0);
+        t.visible = false;
+        inputGroup.add(t);
+        tokens.push({
+            mesh: t, 
+            speed: 0.2 + Math.random()*0.1, 
+            resetPos: -35 - (Math.random() * 10),
+            active: false
+        });
+    }
+    worldGroup.add(inputGroup);
+    inputGroup.userData = { name: "Tokenizer (Input)", desc: "Raw data enters here and is converted into numerical vectors/tokens." };
+
+    // D. EXTERNAL TOOL MODULE
+    const apiGroup = new THREE.Group();
+    const sphereGeo = new THREE.SphereGeometry(3, 10, 10);
+    const apiModule = new THREE.Mesh(sphereGeo, toolMat);
+    apiGroup.add(apiModule);
+    apiGroup.position.set(18, 5, 0);
+    worldGroup.add(apiGroup);
+    apiGroup.userData = { name: "External Tool Module", desc: "Accesses real-time, grounded data (Google Search) and specialized APIs (TTS) to augment V-Consensus." };
+
+    // E. LATENT SPACE CLUSTER (RAG Simulation)
+    const lscGroup = new THREE.Group();
+    const lscSpheres = [];
+    const lscRadius = 5;
+
+    for(let i=0; i<8; i++) {
+        const geo = new THREE.SphereGeometry(0.5, 4, 4);
+        const mesh = new THREE.Mesh(geo, lscMatLocal);
+        const angle = (i / 8) * Math.PI * 2;
+        mesh.position.set(
+            Math.cos(angle) * lscRadius, 
+            (Math.random() - 0.5) * 4, 
+            Math.sin(angle) * lscRadius
+        );
+        lscGroup.add(mesh);
+        lscSpheres.push(mesh);
+    }
+    lscGroup.position.set(0, 15, 0);
+    worldGroup.add(lscGroup);
+    lscGroup.userData = { name: "Latent Space Cluster (LSC)", desc: "Dynamically retrieved vectors (RAG) providing context for the current step." };
+
+
+    // F. WORKBENCH (Output / Collapse)
+    const outputGroup = new THREE.Group();
+    const tableGeo = new THREE.CylinderGeometry(4, 4, 0.5, 6);
+    const table = new THREE.Mesh(tableGeo, new THREE.MeshStandardMaterial({color: 0x222222}));
+    table.position.set(0, -1, 12);
+    
+    const ideaGeo = new THREE.IcosahedronGeometry(2, 0);
+    const ideaMat = new THREE.MeshPhysicalMaterial({
+        color: 0xffaa00, wireframe: true, emissive: 0xff4400, emissiveIntensity: 0.5
+    });
+    const ideaMesh = new THREE.Mesh(ideaGeo, ideaMat);
+    ideaMesh.position.set(0, 2, 12);
+    
+    outputGroup.add(table, ideaMesh);
+    worldGroup.add(outputGroup);
+    outputGroup.userData = { name: "Probability Collapse Workbench", desc: "The final resolution of V-Consensus, selecting the single best token to form the output." };
+
+    // G. ATTENTION LINES (The Beams - Now Multi-Head)
+    const beamCount = headColors.length;
+    const beams = [];
+    for(let i=0; i<beamCount; i++) {
+        const beamMat = new THREE.LineBasicMaterial({ color: headColors[i], transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(3 * 2);
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const line = new THREE.Line(geometry, beamMat);
+        line.visible = false;
+        scene.add(line);
+        beams.push({
+            line: line,
+            targetIndex: Math.floor(Math.random() * memoryBlocks.length),
+            timer: Math.random() * 100,
+            color: headColors[i],
+            name: headNames[i]
+        });
+    }
+
+    // --- INTERACTION ---
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const tooltip = document.getElementById('tooltip');
+    
+    window.addEventListener('mousemove', (e) => {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    });
+
+    // --- ANIMATION LOOP ---
+    let frame = 0;
+
+    function animate() {
+        requestAnimationFrame(animate);
+        frame++;
+
+        controls.update(); // Update OrbitControls
+
+        // 1. V-Consensus Meter Update
+        vConsensusText.textContent = `${Math.round(state.vConsensusProgress)}%`;
+        vMeterFill.style.height = `${state.vConsensusProgress}%`;
+        if(state.vConsensusProgress === 100) {
+            vMeterFill.style.boxShadow = '0 0 15px 5px #ffffff';
+        } else {
+            vMeterFill.style.boxShadow = '0 0 8px rgba(0, 255, 255, 0.5)';
+        }
+
+        // 2. Avatar Animation
+        brain.rotation.y += 0.01;
+        const isThinking = state.processStage === 'thinking' || state.processStage === 'tool_call';
+        if(isThinking) {
+            brain.scale.setScalar(1 + Math.sin(frame * 0.1) * 0.15); 
+        } else {
+            brain.scale.setScalar(THREE.MathUtils.lerp(brain.scale.x, 1, 0.05));
+        }
+        ring1.rotation.x += 0.02; ring1.rotation.y += 0.02;
+        ring2.rotation.x -= 0.02; ring2.rotation.z += 0.01;
+
+        // 3. Alignment Filter Animation
+        safetyFilter.material.color.set(state.processStage === 'filtering' ? 0xff4400 : 0x00ff44);
+        safetyFilter.material.opacity = state.processStage === 'filtering' ? 0.7 : 0.3;
+
+        // 4. Token Stream (Input Visualization)
+        const isTokenizing = state.processStage === 'input' || state.processStage === 'filtering';
+        tokens.forEach((t) => {
+            t.mesh.visible = isTokenizing;
+            if (isTokenizing) {
+                t.mesh.position.x += t.speed;
+                t.mesh.rotation.x += 0.05;
+                t.mesh.rotation.y += 0.05;
+                
+                if(t.mesh.position.x > -24) { 
+                    t.mesh.position.x = t.resetPos;
+                    gate.material.emissiveIntensity = 8;
+                    setTimeout(() => gate.material.emissiveIntensity = 0.5, 50);
+                }
+            } else {
+                t.mesh.position.x = t.resetPos; 
+            }
+        });
+
+        // 5. External Tool Module Animation
+        apiModule.rotation.x += 0.01;
+        apiModule.rotation.y -= 0.02;
+        apiModule.material.emissiveIntensity = state.processStage === 'tool_call' ? 5 : 1;
+
+        // 6. Latent Space Cluster (LSC) Animation
+        lscGroup.rotation.y += 0.008;
+        lscGroup.position.y = 15 + Math.sin(frame * 0.05) * 2; 
+        lscSpheres.forEach(s => {
+            s.scale.setScalar(1 + Math.sin(frame * 0.1 + s.position.x) * 0.3);
+        });
+
+        // 7. Attention Beams (Multi-Head V-Consensus)
+        const isAttending = state.processStage === 'thinking' || state.processStage === 'tool_call';
+        beams.forEach((beam, i) => {
+            beam.line.visible = isAttending;
+            if (!isAttending) {
+                memoryBlocks.forEach(b => b.material.emissiveIntensity = THREE.MathUtils.lerp(b.material.emissiveIntensity, 0.5, 0.05));
+                return; 
+            }
+            
+            beam.timer++;
+            
+            // Switch targets every 80 frames
+            if(beam.timer > 80) {
+                beam.targetIndex = Math.floor(Math.random() * memoryBlocks.length);
+                beam.timer = 0;
+            }
+
+            const targetBlock = memoryBlocks[beam.targetIndex];
+            
+            // Update line positions (From Avatar to Target)
+            const positions = beam.line.geometry.attributes.position.array;
+            
+            // Beam always originates from a slightly offset point on the brain (for multi-head visualization)
+            positions[0] = Math.cos(frame * 0.1 + i) * 0.5; 
+            positions[1] = 5 + Math.sin(frame * 0.1 + i) * 0.5; 
+            positions[2] = Math.sin(frame * 0.1 + i) * 0.5; 
+            
+            const currentEnd = new THREE.Vector3(positions[3], positions[4], positions[5]);
+            let targetPos;
+
+            // Target the API Module and LSC if a tool call is active, otherwise the Memory Blocks
+            if (state.processStage === 'tool_call' && i < 2) { // 2 heads go to API/LSC
+                targetPos = i % 2 === 0 ? apiModule.position.clone() : lscGroup.children[Math.floor(Math.random() * lscGroup.children.length)].getWorldPosition(new THREE.Vector3());
+            } else { // Other heads go to memory
+                targetPos = targetBlock.position.clone();
+            }
+
+            currentEnd.lerp(targetPos, 0.1);
+            
+            positions[3] = currentEnd.x;
+            positions[4] = currentEnd.y;
+            positions[5] = currentEnd.z;
+            
+            beam.line.geometry.attributes.position.needsUpdate = true;
+            
+            // Highlight the target block
+            targetBlock.material.emissiveIntensity = THREE.MathUtils.lerp(targetBlock.material.emissiveIntensity, 2.5, 0.1);
+        });
+
+        // 8. Output "Idea" Morphing & Workbench Text Positioning
+        ideaMesh.rotation.y -= 0.01;
+        ideaMesh.rotation.z += 0.005;
+        
+        if (state.processStage === 'output' || state.processStage === 'speaking') {
+            const jitter = Math.random() * 0.1;
+            ideaMesh.scale.setScalar(1.5 + jitter);
+            ideaMesh.material.color.setHex(0xffffff);
+        } else {
+            ideaMesh.scale.setScalar(THREE.MathUtils.lerp(ideaMesh.scale.x, 1, 0.05));
+            ideaMesh.material.color.setHex(0xffaa00);
+        }
+        
+        // Position Result Display above the workbench using camera projection
+        if (resultDisplay.style.opacity > 0) {
+            const vector = new THREE.Vector3(ideaMesh.position.x, ideaMesh.position.y + 4, ideaMesh.position.z);
+            vector.project(camera);
+
+            vector.x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+            vector.y = -(vector.y * 0.5 - 0.5) * window.innerHeight;
+            
+            resultDisplay.style.left = `${vector.x}px`;
+            resultDisplay.style.top = `${vector.y}px`;
+            resultDisplay.style.transform = `translate(-50%, -50%)`;
+        }
+
+        // 9. Starfield Rotation (Latent Space)
+        starField.rotation.y += 0.0005;
+
+        // 10. Raycasting (Interaction)
+        raycaster.setFromCamera(mouse, camera);
+        const interactables = [avatarGroup, inputGroup, memoryGroup, outputGroup, safetyFilter, apiGroup, lscGroup];
+        let intersected = false;
+
+        for (let group of interactables) {
+            const intersects = raycaster.intersectObjects(Array.isArray(group.children) ? group.children : [group]);
+            if (intersects.length > 0) {
+                tooltip.style.opacity = 1;
+                tooltip.innerHTML = `<strong>${group.userData.name}</strong><br>${group.userData.desc}`;
+                intersected = true;
+                break;
+            } 
+        }
+        if (!intersected) tooltip.style.opacity = 0;
+
+        renderer.render(scene, camera);
+    }
+
+    // Handle Window Resize
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        controls.update(); // Update controls target for resize
+    });
+
+    // Initial state setup
+    stateText.textContent = 'IDLE: Ready for new input';
+    // Start the animation only after the splash screen is dismissed
+    document.addEventListener('DOMContentLoaded', () => {
+        // Only start rendering once the DOM is ready
+        animate(); 
+    });
+
+</script>
+</body>
+</html>
