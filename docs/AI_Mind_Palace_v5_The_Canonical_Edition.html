@@ -195,6 +195,9 @@
         This is an interactive visualization of a Large Language Model's internal architecture, showing the flow of data from input to thought (V-Consensus) to grounded output.
     </p>
     <p class="click-hint">Click anywhere to enter the mind palace...</p>
+    <p style="font-size: 0.7rem; color: #ffcc00; margin-top: 20px;">
+        **Note:** This demo uses a shared, rate-limited API key. For full functionality, please replace the placeholder `apiKey` in the HTML file with your own Gemini API key.
+    </p>
 </div>
 
 <!-- HUD Layer -->
@@ -470,7 +473,7 @@
         } catch (error) {
             console.error("Gemini API Error:", error);
             state.processStage = 'idle';
-            stateText.textContent = 'ERROR: See console for details.';
+            stateText.textContent = 'ERROR: API call failed. Check your API key and network connection.';
             state.vConsensusProgress = 0;
             setTimeout(() => resultDisplay.style.opacity = 0, 500);
         } finally {
