@@ -6,7 +6,7 @@
     <title>AI Internal Environment v5: The Canonical Edition</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #020205; font-family: 'Courier New', Courier, monospace; }
-        canvas { display: block; }
+        canvas { display: block; touch-action: none; }
         
         /* --- HUD Elements --- */
         #ui-layer {
@@ -183,7 +183,20 @@
             from { opacity: 0.5; }
             to { opacity: 1; }
         }
-    </style>
+
+        /* --- Mobile Tweaks --- */
+        @media (max-width: 600px) {
+            #tooltip {
+                font-size: 12px;
+                padding: 10px 15px;
+            }
+            #ui-layer {
+                max-width: 250px;
+            }
+            h1 {
+                font-size: 1.2rem;
+            }
+        }
 </head>
 <body>
 
