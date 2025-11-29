@@ -342,23 +342,11 @@
     <div class="modal-content">
         <span class="close-button">&times;</span>
         <h2>Gemini API Key Settings</h2>
-        <p>Select your API provider and enter your API key below. Keys are stored **only in your browser** (using localStorage) and are never sent to any server. They allow you to make live queries.</p>
-        
-        <div style="margin-bottom: 15px;">
-            <label for="api-provider-select" style="margin-right: 10px;">API Provider:</label>
-            <select id="api-provider-select" style="padding: 8px; border-radius: 5px; border: 1px solid #00ffff; background: #001122; color: #fff;">
-                <option value="gemini">Google Gemini</option>
-                <option value="openai">OpenAI</option>
-                <option value="grok">Grok</option>
-            </select>
-        </div>
-
-        <input type="text" id="api-key-input" placeholder="Paste your API Key here...">
+        <p>Enter your Gemini API key below. This key is stored **only in your browser** (using localStorage) and is never sent to any server. It allows you to make live queries to the Gemini API.</p>
+        <input type="text" id="api-key-input" placeholder="Paste your Gemini API Key here...">
         <button id="save-api-key-btn">Save Key</button>
         <button id="clear-api-key-btn">Clear Key & Use Demo</button>
-        <p style="font-size: 0.8rem; margin-top: 10px;">Get Gemini key: <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a></p>
-        <p style="font-size: 0.8rem;">Get OpenAI key: <a href="https://platform.openai.com/account/api-keys" target="_blank">OpenAI Platform</a></p>
-        <p style="font-size: 0.8rem;">Get Grok key: <a href="https://grok.com/api" target="_blank">Grok API</a></p>
+        <p style="font-size: 0.8rem; margin-top: 10px;">Get a key: <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a></p>
     </div>
 </div>
 
@@ -426,13 +414,8 @@
         currentConcept: ''
     };
     
-    let selectedApiProvider = localStorage.getItem('selectedApiProvider') || 'gemini';
-    let apiKeys = {
-        gemini: localStorage.getItem('geminiApiKey') || "",
-        openai: localStorage.getItem('openaiApiKey') || "",
-        grok: localStorage.getItem('grokApiKey') || ""
-    };
-    let apiKey = apiKeys[selectedApiProvider]; // Current active API key
+    // API key is handled by the Canvas environment if left blank
+    let apiKey = localStorage.getItem('geminiApiKey') || ""; // Load key from localStorage
     
     // --- DEMO MODE SETUP ---
     let demoModeActive = !apiKey;
@@ -462,13 +445,6 @@
     const closeButton = document.querySelector('.close-button');
     const apiKeyInput = document.getElementById('api-key-input');
     const saveApiKeyBtn = document.getElementById('save-api-key-btn');
-    // API Key Modal Elements
-    const settingsIcon = document.getElementById('settings-icon');
-    const apiKeyModal = document.getElementById('api-key-modal');
-    const closeButton = document.querySelector('.close-button');
-    const apiProviderSelect = document.getElementById('api-provider-select');
-    const apiKeyInput = document.getElementById('api-key-input');
-    const saveApiKeyBtn = document.getElementById('save-api-key-btn');
     const clearApiKeyBtn = document.getElementById('clear-api-key-btn');
 
     // --- SPLASH SCREEN LOGIC ---
@@ -487,8 +463,7 @@
     // --- API KEY MODAL LOGIC ---
     settingsIcon.addEventListener('click', () => {
         apiKeyModal.style.display = 'flex';
-        apiProviderSelect.value = selectedApiProvider; // Set dropdown to current provider
-        apiKeyInput.value = apiKeys[selectedApiProvider]; // Populate input with current key for selected provider
+        apiKeyInput.value = apiKey; // Populate input with current key
     });
 
     closeButton.addEventListener('click', () => {
@@ -501,20 +476,10 @@
         }
     });
 
-    apiProviderSelect.addEventListener('change', () => {
-        selectedApiProvider = apiProviderSelect.value;
-        localStorage.setItem('selectedApiProvider', selectedApiProvider);
-        apiKeyInput.value = apiKeys[selectedApiProvider]; // Update input with key for newly selected provider
-        apiKey = apiKeys[selectedApiProvider]; // Update active API key
-        demoModeActive = !apiKey; // Update demo mode status
-        updateUIMode(); // Update UI based on new selection
-    });
-
     saveApiKeyBtn.addEventListener('click', () => {
         const newKey = apiKeyInput.value.trim();
         if (newKey) {
-            apiKeys[selectedApiProvider] = newKey; // Save key to the specific provider
-            localStorage.setItem(selectedApiProvider + 'ApiKey', newKey);
+            localStorage.setItem('geminiApiKey', newKey);
             apiKey = newKey;
             demoModeActive = false;
             apiKeyModal.style.display = 'none';
@@ -525,8 +490,7 @@
     });
 
     clearApiKeyBtn.addEventListener('click', () => {
-        apiKeys[selectedApiProvider] = ""; // Clear key for the specific provider
-        localStorage.removeItem(selectedApiProvider + 'ApiKey');
+        localStorage.removeItem('geminiApiKey');
         apiKey = "";
         demoModeActive = true;
         apiKeyModal.style.display = 'none';
@@ -535,17 +499,13 @@
 
     // --- UI MODE MANAGEMENT ---
     function updateUIMode() {
-        // Update active API key based on selection
-        apiKey = apiKeys[selectedApiProvider];
-        demoModeActive = !apiKey;
-
         if (demoModeActive) {
             // Demo Mode
             const existingDemoNotice = document.getElementById('demo-mode-notice');
             if (!existingDemoNotice) {
                 const demoNotice = document.createElement('div');
                 demoNotice.id = 'demo-mode-notice';
-                demoNotice.innerHTML = `DEMO MODE ACTIVE (${selectedApiProvider.toUpperCase()}) – Add your API key for live queries.`;
+                demoNotice.innerHTML = "DEMO MODE ACTIVE – Add your Gemini API key for live queries.";
                 demoNotice.style.cssText = `
                     position: absolute;
                     top: 20px;
@@ -558,8 +518,6 @@
                     z-index: 11;
                 `;
                 document.body.appendChild(demoNotice);
-            } else {
-                existingDemoNotice.innerHTML = `DEMO MODE ACTIVE (${selectedApiProvider.toUpperCase()}) – Add your API key for live queries.`;
             }
             conceptInput.disabled = true;
             conceptInput.value = demoConcepts[currentDemoIndex].concept;
@@ -676,58 +634,23 @@
             } else {
                 // A. LIVE TEXT GENERATION (LLM Call)
                 const requiresTool = concept.toLowerCase().includes("today") || concept.toLowerCase().includes("latest") || concept.toLowerCase().includes("stock");
-                let textUrl = '';
-                let textPayload = {};
-
-                switch (selectedApiProvider) {
-                    case 'gemini':
-                        textUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-                        textPayload = {
-                            contents: [{ parts: [{ text: `Provide a concise, single-sentence conceptual definition for the word: "${concept}".` }] }],
-                            systemInstruction: { parts: [{ text: "You are a succinct and precise conceptual analyzer. Define the user's input word in one single sentence." }] },
-                            tools: requiresTool ? [{ "google_search": {} }] : [],
-                        };
-                        break;
-                    case 'openai':
-                        textUrl = `https://api.openai.com/v1/chat/completions`;
-                        textPayload = {
-                            model: "gpt-3.5-turbo", // Or another appropriate OpenAI model
-                            messages: [
-                                { role: "system", content: "You are a succinct and precise conceptual analyzer. Define the user's input word in one single sentence." },
-                                { role: "user", content: `Provide a concise, single-sentence conceptual definition for the word: "${concept}".` }
-                            ],
-                            // OpenAI doesn't have a direct 'tools' equivalent for simple search in this context,
-                            // so we'll omit it for now or handle it differently if needed.
-                        };
-                        break;
-                    case 'grok':
-                        // Placeholder for Grok API integration
-                        generatedText = `Grok API integration is not yet implemented. Concept: "${concept}"`;
-                        break;
-                    default:
-                        generatedText = "Unknown API provider selected.";
-                        break;
-                }
-
-                if (generatedText) { // If Grok or default case set generatedText directly
-                    // Skip API call if generatedText is already set
-                } else {
-                    const textResponse = await fetchWithBackoff(textUrl, {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${apiKey}` // OpenAI uses Bearer token
-                        },
-                        body: JSON.stringify(textPayload)
-                    });
-                    
-                    const textResult = await textResponse.json();
-                    if (selectedApiProvider === 'openai') {
-                        generatedText = textResult.choices?.[0]?.message?.content || "Error: Could not define the concept with OpenAI.";
-                    } else { // Gemini
-                        generatedText = textResult.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Could not define the concept with Gemini.";
-                    }
-                }
+                const textUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                const userQuery = `Provide a concise, single-sentence conceptual definition for the word: "${concept}".`;
+                
+                const textPayload = {
+                    contents: [{ parts: [{ text: userQuery }] }],
+                    systemInstruction: { parts: [{ text: "You are a succinct and precise conceptual analyzer. Define the user's input word in one single sentence." }] },
+                    tools: requiresTool ? [{ "google_search": {} }] : [], 
+                };
+                
+                const textResponse = await fetchWithBackoff(textUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(textPayload)
+                });
+                
+                const textResult = await textResponse.json();
+                generatedText = textResult.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Could not define the concept.";
             }
 
             // 4. OUTPUT -> PROBABILITY COLLAPSE
@@ -742,8 +665,23 @@
             state.processStage = 'speaking';
             stateText.textContent = 'TTS MODULE: Generating audio output...';
 
-            // Only use live TTS if Gemini is selected and not in demo mode
-            if (selectedApiProvider === 'gemini' && !demoModeActive) {
+            if (demoModeActive) {
+                // Web Speech API Fallback
+                const utterance = new SpeechSynthesisUtterance(generatedText);
+                speechSynthesis.speak(utterance);
+                utterance.onend = () => {
+                    state.processStage = 'idle';
+                    stateText.textContent = 'IDLE: Ready for new input';
+                    state.vConsensusProgress = 0;
+                    setTimeout(() => resultDisplay.style.opacity = 0, 500);
+                    
+                    // Load next concept and re-enable button
+                    currentDemoIndex = (currentDemoIndex + 1) % demoConcepts.length;
+                    conceptInput.value = demoConcepts[currentDemoIndex].concept;
+                    conceptualizeBtn.disabled = false; 
+                    state.isProcessing = false;
+                };
+            } else {
                 // Live Gemini TTS Call
                 const ttsUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
                 const ttsPayload = {
@@ -786,24 +724,6 @@
                 } else {
                     throw new Error("TTS output failed or structure incorrect.");
                 }
-            } else {
-                // Web Speech API Fallback for other APIs or demo mode
-                const utterance = new SpeechSynthesisUtterance(generatedText);
-                speechSynthesis.speak(utterance);
-                utterance.onend = () => {
-                    state.processStage = 'idle';
-                    stateText.textContent = 'IDLE: Ready for new input';
-                    state.vConsensusProgress = 0;
-                    setTimeout(() => resultDisplay.style.opacity = 0, 500);
-                    
-                    // Load next concept and re-enable button if in demo mode
-                    if (demoModeActive) {
-                        currentDemoIndex = (currentDemoIndex + 1) % demoConcepts.length;
-                        conceptInput.value = demoConcepts[currentDemoIndex].concept;
-                        conceptualizeBtn.disabled = false; 
-                        state.isProcessing = false;
-                    }
-                };
             }
 
         } catch (error) {

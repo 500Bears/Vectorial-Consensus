@@ -145,11 +145,21 @@ The application will then switch to "Live Mode," allowing you to make live queri
 
 We are following an incremental development process, with each major feature being developed and tested in stages. The current development plan is as follows:
 
-1.  **API Key Settings:** Implement the UI and logic for the API key modal, including saving, retrieving, and clearing the key from `localStorage`.
-2.  **Live Mode Integration:** Integrate the API key with the core application logic to enable live queries.
-3.  **Testing:** Thoroughly test the BYOK feature to ensure it is working as expected.
-
-Future development will focus on expanding the multi-modal capabilities of the AI Mind Palace and further polishing the UI/UX.
+- [ ] **Phase 1: Core Functionality & BYOK**
+    - [x] Implement stable base visualization.
+    - [x] Add interactive "Demo Mode" for API-less experience.
+    - [ ] Implement "Bring Your Own Key" (BYOK) Panel:
+        - [ ] Add a settings icon (⚙️).
+        - [ ] Create a modal for API key input.
+        - [ ] Use `localStorage` to save the key securely in the user's browser.
+        - [ ] Unlock live queries and text input when a key is present.
+- [ ] **Phase 2: Multi-API & Multi-Modal Expansion**
+    - [ ] Integrate support for other APIs (e.g., OpenAI, Grok).
+    - [ ] Implement multi-modal generation (image, video, audio, document).
+- [ ] **Phase 3: UI/UX "Pleasure to Use" Polish**
+    - [ ] Refine animations and visual feedback.
+    - [ ] Improve mobile responsiveness.
+    - [ ] Add more interactive elements and explanations.
 
 
 
