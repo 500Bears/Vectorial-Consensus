@@ -49,11 +49,7 @@ The 3D visualization represents the different components of the AI's internal ar
 1.  Clone this repository to your local machine.
 2.  Open the `AI_Mind_Palace_v5_The_Canonical_Edition.html` file in a modern web browser (like Chrome or Firefox).
 
-## The "Vectorial Consensus" Paper
 
-For a more detailed explanation of the concepts behind the AI Mind Palace, please see our paper:
-
-[Vectorial Consensus.pdf](./Vectorial%20Consensus.pdf)
 
 ## License
 
