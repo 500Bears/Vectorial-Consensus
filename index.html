@@ -310,7 +310,6 @@
         { concept: "Grok", response: "To grok is to understand something intuitively or by empathy." },
         { concept: "Consensus", response: "Consensus is a general agreement among a group of people." }
     ];
-    let demoInterval;
     let currentDemoIndex = 0;
 
     // UI elements
@@ -339,11 +338,14 @@
     splashTimeout = setTimeout(hideSplash, 8000); // Auto-hide after 8 seconds
 
     conceptualizeBtn.addEventListener('click', () => {
-        const concept = conceptInput.value.trim();
-        if (concept && !state.isProcessing) {
-            if (demoModeActive) {
-                alert("Demo Mode is active. Please add your Gemini API key to the code for live queries.");
-            } else {
+        if (state.isProcessing) return;
+
+        if (demoModeActive) {
+            const item = demoConcepts[currentDemoIndex];
+            conceptualizeIdea(item.concept, item.response);
+        } else {
+            const concept = conceptInput.value.trim();
+            if (concept) {
                 conceptualizeIdea(concept);
             }
         }
@@ -365,18 +367,8 @@
         `;
         document.body.appendChild(demoNotice);
         
-        conceptualizeBtn.disabled = true; // Disable button in demo mode
         conceptInput.disabled = true;
-
-        const runDemoCycle = () => {
-            if (state.isProcessing) return;
-            const item = demoConcepts[currentDemoIndex];
-            conceptualizeIdea(item.concept, item.response);
-            currentDemoIndex = (currentDemoIndex + 1) % demoConcepts.length;
-        };
-
-        runDemoCycle(); // Run first cycle immediately
-        demoInterval = setInterval(runDemoCycle, 10000); // Cycle every 10 seconds
+        conceptInput.value = demoConcepts[currentDemoIndex].concept;
     }
 
     // Function to handle exponential backoff for API calls
@@ -403,13 +395,11 @@
     // --- GEMINI API INTEGRATION (now with demo fallback) ---
     async function conceptualizeIdea(concept, demoResponse = null) {
         state.isProcessing = true;
-        if (!demoModeActive) {
-            conceptualizeBtn.disabled = true;
-        }
+        conceptualizeBtn.disabled = true;
         resultDisplay.style.opacity = 0;
         state.currentConcept = concept;
         state.vConsensusProgress = 0;
-        conceptInput.value = concept; // Show current demo concept
+        conceptInput.value = concept;
 
         try {
             // 1. INPUT -> ALIGNMENT FILTER
@@ -485,6 +475,11 @@
                     stateText.textContent = 'IDLE: Ready for new input';
                     state.vConsensusProgress = 0;
                     setTimeout(() => resultDisplay.style.opacity = 0, 500);
+                    
+                    // Load next concept and re-enable button
+                    currentDemoIndex = (currentDemoIndex + 1) % demoConcepts.length;
+                    conceptInput.value = demoConcepts[currentDemoIndex].concept;
+                    conceptualizeBtn.disabled = false; 
                     state.isProcessing = false;
                 };
             } else {
@@ -539,7 +534,7 @@
             state.vConsensusProgress = 0;
             setTimeout(() => resultDisplay.style.opacity = 0, 500);
         } finally {
-            // In demo mode, isProcessing is handled by the utterance.onend callback.
+            // In demo mode, state is handled by utterance.onend.
             if (!demoModeActive) {
                 state.isProcessing = false;
                 conceptualizeBtn.disabled = false;
