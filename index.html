@@ -329,11 +329,13 @@
         > Drag/scroll to move the camera.<br>
         > Hover elements for lore context.
     </p>
-    <div id="settings-icon">⚙️</div>
 </div>
 
 <div id="tooltip"></div>
 <div id="result-display"></div>
+
+<!-- Settings Icon -->
+<div id="settings-icon">⚙️</div>
 
 <!-- API Key Settings Modal -->
 <div id="api-key-modal" class="modal">
@@ -531,6 +533,22 @@
             conceptualizeBtn.disabled = false; // Enable button for live interaction
         }
     }
+
+    conceptualizeBtn.addEventListener('click', () => {
+        if (state.isProcessing) return;
+
+        if (demoModeActive) {
+            const item = demoConcepts[currentDemoIndex];
+            conceptualizeIdea(item.concept, item.response);
+        } else {
+            const concept = conceptInput.value.trim();
+            if (concept) {
+                conceptualizeIdea(concept);
+            } else {
+                alert("Please enter a concept.");
+            }
+        }
+    });
 
     function startDemoMode() {
         const demoNotice = document.createElement('div');
