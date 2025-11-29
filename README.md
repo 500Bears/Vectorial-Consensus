@@ -120,10 +120,36 @@ The 3D visualization represents the different components of the AI's internal ar
 *   **Three.js**
 *   **Gemini API** (for text generation and Text-to-Speech)
 
-## How to Run Locally
+## Development
+
+This project is under active development, following an incremental approach. The current focus is on implementing a "Bring Your Own Key" (BYOK) feature.
+
+### How to Run Locally
 
 1.  Clone this repository to your local machine.
-2.  Open the `AI_Mind_Palace_v5_The_Canonical_Edition.html` file in a modern web browser (like Chrome or Firefox).
+2.  Open the `index.html` file in a modern web browser (like Chrome or Firefox).
+
+### "Bring Your Own Key" (BYOK) Feature
+
+The BYOK feature allows users to provide their own Gemini API key to use the live features of the AI Mind Palace. The key is stored locally in the browser's `localStorage` and is never sent to any server other than the Google AI API.
+
+To use the BYOK feature:
+
+1.  Click the settings icon (⚙️) in the top-right corner of the screen.
+2.  Enter your Gemini API key in the input field.
+3.  Click "Save Key".
+
+The application will then switch to "Live Mode," allowing you to make live queries to the Gemini API. To switch back to "Demo Mode," simply clear the key from the settings modal.
+
+### Incremental Development
+
+We are following an incremental development process, with each major feature being developed and tested in stages. The current development plan is as follows:
+
+1.  **API Key Settings:** Implement the UI and logic for the API key modal, including saving, retrieving, and clearing the key from `localStorage`.
+2.  **Live Mode Integration:** Integrate the API key with the core application logic to enable live queries.
+3.  **Testing:** Thoroughly test the BYOK feature to ensure it is working as expected.
+
+Future development will focus on expanding the multi-modal capabilities of the AI Mind Palace and further polishing the UI/UX.
 
 
 

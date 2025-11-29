@@ -197,6 +197,106 @@
                 font-size: 1.2rem;
             }
         }
+
+        /* --- Settings Icon --- */
+        #settings-icon {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 1.8rem;
+            color: #00ffff;
+            cursor: pointer;
+            z-index: 11;
+            text-shadow: 0 0 10px #00ffff;
+            transition: transform 0.2s;
+        }
+        #settings-icon:hover { transform: rotate(30deg); }
+
+        /* --- Modal Styles --- */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 101; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.8); /* Black w/ opacity */
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #020205;
+            margin: auto;
+            padding: 30px;
+            border: 2px solid #00ffff;
+            width: clamp(300px, 80vw, 500px);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            border-radius: 10px;
+            color: #eee;
+            text-align: center;
+            position: relative;
+        }
+
+        .modal-content h2 {
+            color: #00ffff;
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-shadow: 0 0 8px #00ffff;
+        }
+
+        .modal-content p {
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        #api-key-input {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #00ffff;
+            background: #001122;
+            color: #fff;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        .modal-content button {
+            background: #ff00aa;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s, transform 0.1s;
+            margin: 5px;
+        }
+
+        .modal-content button:hover { background: #ff33cc; transform: scale(1.05); }
+        .modal-content button:disabled { background: #333; cursor: not-allowed; }
+
+        .close-button {
+            color: #aaa;
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: #00ffff;
+            text-decoration: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -229,10 +329,24 @@
         > Drag/scroll to move the camera.<br>
         > Hover elements for lore context.
     </p>
+    <div id="settings-icon">⚙️</div>
 </div>
 
 <div id="tooltip"></div>
 <div id="result-display"></div>
+
+<!-- API Key Settings Modal -->
+<div id="api-key-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-button">&times;</span>
+        <h2>Gemini API Key Settings</h2>
+        <p>Enter your Gemini API key below. This key is stored **only in your browser** (using localStorage) and is never sent to any server. It allows you to make live queries to the Gemini API.</p>
+        <input type="text" id="api-key-input" placeholder="Paste your Gemini API Key here...">
+        <button id="save-api-key-btn">Save Key</button>
+        <button id="clear-api-key-btn">Clear Key & Use Demo</button>
+        <p style="font-size: 0.8rem; margin-top: 10px;">Get a key: <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a></p>
+    </div>
+</div>
 
 <div id="control-panel">
     <input type="text" id="concept-input" placeholder="Enter a concept (e.g., 'Exascale')" value="Ambition">
@@ -299,10 +413,10 @@
     };
     
     // API key is handled by the Canvas environment if left blank
-    const apiKey = "";
+    let apiKey = localStorage.getItem('geminiApiKey') || ""; // Load key from localStorage
     
     // --- DEMO MODE SETUP ---
-    const demoModeActive = !apiKey;
+    let demoModeActive = !apiKey;
     const demoConcepts = [
         { concept: "Wisdom", response: "Wisdom is the quality of having experience, knowledge, and good judgment." },
         { concept: "Ambition", response: "Ambition is a strong desire to do or to achieve something, typically requiring determination and hard work." },
@@ -323,6 +437,14 @@
     const audioOutput = document.getElementById('audio-output');
     const splashScreen = document.getElementById('splash-screen');
 
+    // API Key Modal Elements
+    const settingsIcon = document.getElementById('settings-icon');
+    const apiKeyModal = document.getElementById('api-key-modal');
+    const closeButton = document.querySelector('.close-button');
+    const apiKeyInput = document.getElementById('api-key-input');
+    const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+    const clearApiKeyBtn = document.getElementById('clear-api-key-btn');
+
     // --- SPLASH SCREEN LOGIC ---
     let splashTimeout;
     function hideSplash() {
@@ -330,27 +452,85 @@
         splashScreen.style.opacity = 0;
         setTimeout(() => {
             splashScreen.style.display = 'none';
-            if (demoModeActive) {
-                startDemoMode();
-            }
+            updateUIMode(); // Set initial UI mode after splash
         }, 1000);
     }
     splashScreen.addEventListener('click', hideSplash);
     splashTimeout = setTimeout(hideSplash, 8000); // Auto-hide after 8 seconds
 
-    conceptualizeBtn.addEventListener('click', () => {
-        if (state.isProcessing) return;
+    // --- API KEY MODAL LOGIC ---
+    settingsIcon.addEventListener('click', () => {
+        apiKeyModal.style.display = 'flex';
+        apiKeyInput.value = apiKey; // Populate input with current key
+    });
 
-        if (demoModeActive) {
-            const item = demoConcepts[currentDemoIndex];
-            conceptualizeIdea(item.concept, item.response);
-        } else {
-            const concept = conceptInput.value.trim();
-            if (concept) {
-                conceptualizeIdea(concept);
-            }
+    closeButton.addEventListener('click', () => {
+        apiKeyModal.style.display = 'none';
+    });
+
+    window.addEventListener('click', (event) => {
+        if (event.target == apiKeyModal) {
+            apiKeyModal.style.display = 'none';
         }
     });
+
+    saveApiKeyBtn.addEventListener('click', () => {
+        const newKey = apiKeyInput.value.trim();
+        if (newKey) {
+            localStorage.setItem('geminiApiKey', newKey);
+            apiKey = newKey;
+            demoModeActive = false;
+            apiKeyModal.style.display = 'none';
+            updateUIMode();
+        } else {
+            alert("Please enter a valid API key.");
+        }
+    });
+
+    clearApiKeyBtn.addEventListener('click', () => {
+        localStorage.removeItem('geminiApiKey');
+        apiKey = "";
+        demoModeActive = true;
+        apiKeyModal.style.display = 'none';
+        updateUIMode();
+    });
+
+    // --- UI MODE MANAGEMENT ---
+    function updateUIMode() {
+        if (demoModeActive) {
+            // Demo Mode
+            const existingDemoNotice = document.getElementById('demo-mode-notice');
+            if (!existingDemoNotice) {
+                const demoNotice = document.createElement('div');
+                demoNotice.id = 'demo-mode-notice';
+                demoNotice.innerHTML = "DEMO MODE ACTIVE – Add your Gemini API key for live queries.";
+                demoNotice.style.cssText = `
+                    position: absolute;
+                    top: 20px;
+                    right: 20px;
+                    color: #ffcc00;
+                    background: rgba(0,0,0,0.7);
+                    padding: 5px 10px;
+                    border-radius: 5px;
+                    font-size: 12px;
+                    z-index: 11;
+                `;
+                document.body.appendChild(demoNotice);
+            }
+            conceptInput.disabled = true;
+            conceptInput.value = demoConcepts[currentDemoIndex].concept;
+            conceptualizeBtn.disabled = false; // Enable button for demo interaction
+        } else {
+            // Live Mode
+            const existingDemoNotice = document.getElementById('demo-mode-notice');
+            if (existingDemoNotice) {
+                existingDemoNotice.remove();
+            }
+            conceptInput.disabled = false;
+            conceptInput.value = "Ambition"; // Default value for live mode
+            conceptualizeBtn.disabled = false; // Enable button for live interaction
+        }
+    }
 
     function startDemoMode() {
         const demoNotice = document.createElement('div');
